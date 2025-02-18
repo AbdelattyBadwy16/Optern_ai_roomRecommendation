@@ -18,7 +18,7 @@ class RecommendationSystem:
 		try:
 			df = pd.read_excel(self.file_path, sheet_name="Sheet1")
 		except FileNotFoundError:
-			df = pd.DataFrame(columns=["ID", "Name", "Skills", "Position", "Tracks", "Combined_Features"])  # لو الملف مش موجود، نخلق DataFrame فارغ
+			df = pd.DataFrame(columns=["ID", "Name","Creator ID","Description", "Skills", "Position", "Tracks", "Combined_Features","CreatedAt","Members","CoverPicture"])  # لو الملف مش موجود، نخلق DataFrame فارغ
 		df["Combined_Features"] = df[["Skills", "Position", "Tracks"]].fillna('').agg(' '.join, axis=1)
 		return df
 
@@ -28,9 +28,9 @@ class RecommendationSystem:
 	def update_tfidf(self):
 		self.tfidf_matrix = self.vectorizer.fit_transform(self.df_rooms["Combined_Features"])
 
-	def add_new_room(self, room_id, name, skills, position, tracks):
+	def add_new_room(self, room_id, name, skills, position, tracks,createdAt,members,coverPicture,desc):
 		new_room = pd.DataFrame({
-			"ID": [room_id], "Name": [name], "Skills": [skills], "Position": [position], "Tracks": [tracks]
+			"ID": [room_id], "Name": [name], "Description" : [desc],"Skills": [skills], "Position": [position], "Tracks": [tracks],"CreatedAt" : [createdAt],"Members" : [members], "CoverPicture" : [coverPicture]
 		})
 		new_room["Combined_Features"] = new_room[["Skills", "Position", "Tracks"]].fillna('').agg(' '.join, axis=1)
 		
@@ -43,7 +43,7 @@ class RecommendationSystem:
 		user_vector = self.vectorizer.transform([user_profile])
 		similarities = cosine_similarity(user_vector, self.tfidf_matrix).flatten()
 		recommended_indices = similarities.argsort()[-top_n:][::-1]
-		return self.df_rooms.iloc[recommended_indices][["ID", "Name", "Skills", "Position", "Tracks"]]
+		return self.df_rooms.iloc[recommended_indices][["ID", "Name", "Skills", "Position", "Tracks","Description","CreatedAt","Members","CoverPicture"]]
 
 
 file_path = r"./RoomData.xlsx"
@@ -53,11 +53,11 @@ rec_system = RecommendationSystem(file_path)
 #Apis
 app = FastAPI()
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], 
-    allow_credentials=True,
-    allow_methods=["*"],  
-    allow_headers=["*"],  
+	CORSMiddleware,
+	allow_origins=["*"], 
+	allow_credentials=True,
+	allow_methods=["*"],  
+	allow_headers=["*"],  
 )
 
 class UserInput(BaseModel):
@@ -74,6 +74,7 @@ class NewRoom(BaseModel):
 	skills: str
 	position: str
 	tracks: str
+	desc : str
 	
 @app.post("/recommend/")
 def get_recommendations(user_input: UserInput):
@@ -83,7 +84,7 @@ def get_recommendations(user_input: UserInput):
 	
 @app.post("/add_room/")
 def add_room(new_room: NewRoom):
-	rec_system.add_new_room(new_room.room_id, new_room.name, new_room.skills, new_room.position, new_room.tracks)
+	rec_system.add_new_room(new_room.room_id, new_room.name, new_room.skills, new_room.position, new_room.tracks,new_room.createdAt,new_room.members,new_room.coverPicture,new_room.desc)
 	return {"message": f"Room '{new_room.name}' added successfully!"}
 	
 @app.delete("/delete_room/{room_id}")
