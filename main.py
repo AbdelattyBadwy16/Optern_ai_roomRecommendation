@@ -38,8 +38,8 @@ class RecommendationSystem:
 		self.update_tfidf()
 		self.save_rooms() 
 
-	def recommend_rooms(self, user_skills, user_position, user_tracks, top_n=5):
-		user_profile = f"{user_skills} {user_position} {user_tracks}"
+	def recommend_rooms(self, user_skills, user_position, top_n=4):
+		user_profile = f"{user_skills} {user_position}"
 		user_vector = self.vectorizer.transform([user_profile])
 		similarities = cosine_similarity(user_vector, self.tfidf_matrix).flatten()
 		recommended_indices = similarities.argsort()[-top_n:][::-1]
@@ -63,7 +63,6 @@ app.add_middleware(
 class UserInput(BaseModel):
 	skills: str
 	position: str
-	tracks: str
 	
 class NewRoom(BaseModel):
 	coverPicture : str
@@ -78,7 +77,7 @@ class NewRoom(BaseModel):
 	
 @app.post("/recommend/")
 def get_recommendations(user_input: UserInput):
-	recommended_rooms = rec_system.recommend_rooms(user_input.skills, user_input.position, user_input.tracks)
+	recommended_rooms = rec_system.recommend_rooms(user_input.skills, user_input.position)
 	rooms_list = recommended_rooms.to_dict(orient='records')
 	return {"recommended_rooms": rooms_list}
 	
